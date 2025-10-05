@@ -2,6 +2,26 @@
 import SwiftUI
 import GoogleMaps
 
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
 struct MainAppView: View {
     @State private var mapView: GMSMapView?
     @State private var coordinator: GoogleMapView.Coordinator?
@@ -9,31 +29,36 @@ struct MainAppView: View {
     @State private var showPlacesDropdown: Bool = false
     @State private var selectedCategory: String? = nil
     @State private var isMapView: Bool = true
+    @State private var savedItems: Set<String> = []
+    @State private var shuffledMarkers: [MapMarker] = []
+    @State private var showProfile: Bool = false
     
     private var filteredMarkers: [MapMarker] {
-        guard let category = selectedCategory else {
-            return sampleMarkers
-        }
+        let markersToUse = shuffledMarkers.isEmpty ? sampleMarkers : shuffledMarkers
         
-        return sampleMarkers.filter { marker in
-            switch category {
-            case "bookstores":
-                return marker.id.hasPrefix("bookstore_")
-            case "cafes":
-                return marker.id.hasPrefix("cafe_")
-            case "events":
-                return marker.id.hasPrefix("event_")
-            case "libraries":
-                return marker.id.hasPrefix("nypl_")
-            case "museums & galleries":
-                return marker.id.hasPrefix("museum_")
-            case "parks & gardens":
-                return marker.id.hasPrefix("park_")
-            case "playgrounds":
-                return marker.id.hasPrefix("playground_")
-            default:
-                return false
+        if let category = selectedCategory {
+            return markersToUse.filter { marker in
+                switch category {
+                case "bookstores":
+                    return marker.id.hasPrefix("bookstore_")
+                case "cafes":
+                    return marker.id.hasPrefix("cafe_")
+                case "events":
+                    return marker.id.hasPrefix("event_")
+                case "libraries":
+                    return marker.id.hasPrefix("nypl_")
+                case "museums & galleries":
+                    return marker.id.hasPrefix("museum_")
+                case "parks & gardens":
+                    return marker.id.hasPrefix("park_")
+                case "playgrounds":
+                    return marker.id.hasPrefix("playground_")
+                default:
+                    return false
+                }
             }
+        } else {
+            return markersToUse
         }
     }
     
@@ -407,89 +432,231 @@ struct MainAppView: View {
     ]
     
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center) {
-                Rectangle()
-                    .foregroundColor(.clear)
-                    .frame(width: 35, height: 38)
-                    .background(
-                        Image("benchPNG")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 35, height: 38)
-                            .clipped()
-                    )
-                
-                Rectangle()
-                    .foregroundColor(.clear)
-                    .frame(width: 168, height: 30)
-                    .background(
-                        Image("cgPNG")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 168, height: 30)
-                            .clipped()
-                    )
-                    .padding(.leading, -20)
-                
-                Spacer()
-                
-                Button(action: {
-                    // Profile action
-                }) {
-                    ZStack {
-                        Rectangle()
-                            .fill(Color.clear)
+        Group {
+            if showProfile {
+            // Profile Page
+            VStack(spacing: 0) {
+                // Header with just logo and CG
+                HStack(alignment: .center) {
+                    Rectangle()
+                        .foregroundColor(.clear)
+                        .frame(width: 35, height: 38)
+                        .background(
+                            Image("benchPNG")
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 35, height: 38)
+                                .clipped()
+                        )
+                    
+                    Rectangle()
+                        .foregroundColor(.clear)
+                        .frame(width: 168, height: 30)
+                        .background(
+                            Image("cgPNG")
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 168, height: 30)
+                                .clipped()
+                        )
+                        .padding(.leading, -20)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showProfile = false
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(red: 0.275, green: 0.29, blue: 0.302))
                             .frame(width: 44, height: 44)
-                        
-                        Circle()
-                            .stroke(Color(red: 0.275, green: 0.29, blue: 0.302), lineWidth: 2)
-                            .frame(width: 30, height: 30)
-                            .overlay(
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .frame(height: 76)
+                .background(Color.white)
+                
+                Divider()
+                
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Profile Picture
+                        Rectangle()
+                            .foregroundColor(.clear)
+                            .frame(width: 100, height: 100)
+                            .background(
                                 Image("meg")
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(width: 26, height: 26)
-                                    .clipShape(Circle())
+                                    .frame(width: 100, height: 100)
+                                    .clipped()
                             )
+                            .cornerRadius(100)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .inset(by: -1)
+                                    .stroke(Color(red: 0.74, green: 0.82, blue: 0.98), lineWidth: 2)
+                            )
+                            .padding(.top, 104)
+                        
+                        // Username
+                        Text("@MeganLovesPeople")
+                            .font(
+                                Font.custom("Inter", size: 18)
+                                    .weight(.semibold)
+                            )
+                            .foregroundColor(.black)
+                            .padding(.top, 16)
+                        
+                        // Bio
+                        Text("looking for a park buddy <3")
+                            .font(Font.custom("Roboto", size: 16))
+                            .foregroundColor(Color(red: 0.48, green: 0.49, blue: 0.5))
+                            .padding(.top, 8)
+                        
+                        // Stats
+                        HStack(spacing: 32) {
+                            VStack {
+                                Text("Friends")
+                                    .font(Font.custom("Inter", size: 16))
+                                    .foregroundColor(.black)
+                                Text("42")
+                                    .font(Font.custom("Inter", size: 18))
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.black)
+                            }
+                            
+                            VStack {
+                                Text("Following")
+                                    .font(Font.custom("Inter", size: 16))
+                                    .foregroundColor(.black)
+                                Text("156")
+                                    .font(Font.custom("Inter", size: 18))
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.black)
+                            }
+                        }
+                        .padding(.top, 24)
+                        
+                        // Edit Profile Button
+                        Button(action: {
+                            // Edit profile action
+                        }) {
+                            Text("Edit Profile")
+                                .font(Font.custom("Inter", size: 16))
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                                .frame(width: 200, height: 44)
+                                .background(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .cornerRadius(22)
+                        }
+                        .padding(.top, 24)
+                        
+                        // Your Recent Reviews
+                        Text("Your Recent Reviews")
+                            .font(
+                                Font.custom("Inter", size: 20)
+                                    .weight(.bold)
+                            )
+                            .foregroundColor(.black)
+                            .padding(.top, 32)
+                            .padding(.leading, 20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        Spacer(minLength: 100)
                     }
                 }
+                .background(Color.white)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
-            .frame(height: 76)
-            .background(Color.white)
-            
-            Divider()
-            
-            Button(action: {
-                if showPlacesDropdown {
-                    selectedCategory = nil
-                }
-                showPlacesDropdown.toggle()
-            }) {
-                HStack {
-                    Text(selectedCategory == nil ? "Places" : selectedCategory!.capitalized)
-                        .font(
-                            Font.custom("Inter", size: 32)
-                                .weight(.bold)
+        } else {
+            // Main App Content
+            VStack(spacing: 0) {
+                HStack(alignment: .center) {
+                    Rectangle()
+                        .foregroundColor(.clear)
+                        .frame(width: 35, height: 38)
+                        .background(
+                            Image("benchPNG")
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 35, height: 38)
+                                .clipped()
                         )
-                        .foregroundColor(.black)
                     
-                    Image("chevron_left")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 60, height: 30)
-                        .rotationEffect(.degrees(270))
-                        .padding(.leading, 8)
+                    Rectangle()
+                        .foregroundColor(.clear)
+                        .frame(width: 168, height: 30)
+                        .background(
+                            Image("cgPNG")
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 168, height: 30)
+                                .clipped()
+                        )
+                        .padding(.leading, -20)
                     
                     Spacer()
+                    
+                    Button(action: {
+                        showProfile.toggle()
+                    }) {
+                        ZStack {
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(width: 44, height: 44)
+                            
+                            Circle()
+                                .stroke(Color(red: 0.275, green: 0.29, blue: 0.302), lineWidth: 2)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Image("meg")
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 26, height: 26)
+                                        .clipShape(Circle())
+                                )
+                        }
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .frame(height: 76)
+                .background(Color.white)
+                
+                Divider()
+            
+            if currentPage == 1 {
+                Button(action: {
+                    if showPlacesDropdown {
+                        selectedCategory = nil
+                    }
+                    showPlacesDropdown.toggle()
+                }) {
+                    HStack {
+                        Text(selectedCategory == nil ? "Places" : selectedCategory!.capitalized)
+                            .font(
+                                Font.custom("Inter", size: 32)
+                                    .weight(.bold)
+                            )
+                            .foregroundColor(.black)
+                        
+                        Image("chevron_left")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 60, height: 30)
+                            .rotationEffect(.degrees(270))
+                            .padding(.leading, 8)
+                        
+                        Spacer()
+                    }
+                }
+                .padding(.leading, 21)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
             }
-            .padding(.leading, 21)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
             
             if showPlacesDropdown {
                 VStack(alignment: .leading, spacing: 0) {
@@ -722,17 +889,222 @@ struct MainAppView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(filteredMarkers, id: \.id) { marker in
-                                Rectangle()
-                                    .foregroundColor(.clear)
-                                    .frame(width: 361, height: 200)
-                                    .background(
-                                        Image("nypl")
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 361, height: 200)
-                                            .clipped()
-                                    )
-                                    .cornerRadius(20)
+                                ZStack {
+                                    Rectangle()
+                                        .foregroundColor(.clear)
+                                        .frame(width: 361, height: 200)
+                                        .background(
+                                            Image(
+                                                marker.id.hasPrefix("bookstore_") ? "bookstore" :
+                                                marker.id.hasPrefix("cafe_") ? "drinks" :
+                                                marker.id.hasPrefix("park_") ? "parkGarden" :
+                                                marker.id.hasPrefix("museum_") ? "musee" :
+                                                marker.id.hasPrefix("playground_") ? "plays" :
+                                                marker.id.hasPrefix("event_") ? "party" :
+                                                "nypl"
+                                            )
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 361, height: 200)
+                                                .clipped()
+                                        )
+                                        .cornerRadius(20)
+                                    
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Spacer()
+                                            .frame(height: 94)
+                                        
+                                        Rectangle()
+                                            .foregroundColor(.clear)
+                                            .frame(width: 361, height: 106)
+                                            .background(.white)
+                                            .cornerRadius(20)
+                                            .overlay(
+                                                ZStack {
+                                                    VStack(alignment: .leading, spacing: 9) {
+                                                        // Title/Small
+                                                        Text(marker.title)
+                                                            .font(
+                                                                Font.custom("Inter", size: 18)
+                                                                    .weight(.medium)
+                                                            )
+                                                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                        
+                                                        // Description/Small
+                                                        Text("Open 10 AM - 6 PM")
+                                                            .font(Font.custom("Inter", size: 12))
+                                                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                        
+                                                        // Rating and Distance
+                                                        HStack(spacing: 16) {
+                                                            HStack(spacing: 4) {
+                                                                Image(systemName: "star.fill")
+                                                                    .font(.system(size: 12))
+                                                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                                
+                                                                Text("4.5")
+                                                                    .font(Font.custom("Inter", size: 12))
+                                                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                            }
+                                                            
+                                                            HStack(spacing: 4) {
+                                                                Image(systemName: "location")
+                                                                    .font(.system(size: 12))
+                                                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                                
+                                                                Text("0.3 mi")
+                                                                    .font(Font.custom("Inter", size: 12))
+                                                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                            }
+                                                            
+                                                            Spacer()
+                                                        }
+                                                        
+                                                        Spacer()
+                                                    }
+                                                    .padding(.leading, 55) // 7px (icon position) + 40px (icon width) + 8px (reduced spacing)
+                                                    .padding(.trailing, 20)
+                                                    .padding(.vertical, 16)
+                                                    
+                                                    // Save Icon - positioned at bottom right
+                                                    VStack {
+                                                        Spacer()
+                                                        HStack {
+                                                            Spacer()
+                                                            Button(action: {
+                                                                if savedItems.contains(marker.id) {
+                                                                    savedItems.remove(marker.id)
+                                                                } else {
+                                                                    savedItems.insert(marker.id)
+                                                                }
+                                                            }) {
+                                                                Image(systemName: savedItems.contains(marker.id) ? "bookmark.fill" : "bookmark")
+                                                                    .font(.system(size: 20))
+                                                                    .foregroundColor(savedItems.contains(marker.id) ? Color.blue : Color(red: 0.16, green: 0.17, blue: 0.18))
+                                                                    .frame(width: 24, height: 24)
+                                                            }
+                                                            .padding(.trailing, 16)
+                                                            .padding(.bottom, 16)
+                                                        }
+                                                    }
+                                                    
+                                                    // Category Icon - positioned 7px from the start of the rectangle
+                                                    HStack {
+                                                        VStack {
+                                                            if marker.id.hasPrefix("bookstore_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.38, green: 0.55, blue: 0.89))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Image(systemName: "book.fill")
+                                                                            .font(.system(size: 20))
+                                                                            .foregroundColor(.white)
+                                                                    )
+                                                            } else if marker.id.hasPrefix("cafe_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.59, green: 0.44, blue: 0.37))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Image(systemName: "cup.and.saucer.fill")
+                                                                            .font(.system(size: 20))
+                                                                            .foregroundColor(.white)
+                                                                    )
+                                                            } else if marker.id.hasPrefix("event_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.79, green: 0.67, blue: 0.21))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Rectangle()
+                                                                            .fill(Color.white)
+                                                                            .frame(width: 20, height: 20)
+                                                                            .mask(
+                                                                                Image("compass")
+                                                                                    .resizable()
+                                                                                    .aspectRatio(contentMode: .fit)
+                                                                                    .frame(width: 20, height: 20)
+                                                                            )
+                                                                    )
+                                                            } else if marker.id.hasPrefix("nypl_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.4, green: 0.28, blue: 0.21))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Rectangle()
+                                                                            .fill(Color.white)
+                                                                            .frame(width: 20, height: 20)
+                                                                            .mask(
+                                                                                Image("books")
+                                                                                    .resizable()
+                                                                                    .aspectRatio(contentMode: .fit)
+                                                                                    .frame(width: 20, height: 20)
+                                                                            )
+                                                                    )
+                                                            } else if marker.id.hasPrefix("museum_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.71, green: 0.24, blue: 0.15))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Rectangle()
+                                                                            .fill(Color.white)
+                                                                            .frame(width: 20, height: 20)
+                                                                            .mask(
+                                                                                Image("museum")
+                                                                                    .resizable()
+                                                                                    .aspectRatio(contentMode: .fit)
+                                                                                    .frame(width: 20, height: 20)
+                                                                            )
+                                                                    )
+                                                            } else if marker.id.hasPrefix("park_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.4, green: 0.7, blue: 0.41))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Image(systemName: "tree")
+                                                                            .font(.system(size: 20))
+                                                                            .foregroundColor(.white)
+                                                                    )
+                                                            } else if marker.id.hasPrefix("playground_") {
+                                                                Rectangle()
+                                                                    .foregroundColor(.clear)
+                                                                    .frame(width: 40, height: 40)
+                                                                    .background(Color(red: 0.79, green: 0.42, blue: 0.26))
+                                                                    .cornerRadius(40)
+                                                                    .overlay(
+                                                                        Rectangle()
+                                                                            .fill(Color.white)
+                                                                            .frame(width: 20, height: 20)
+                                                                            .mask(
+                                                                                Image("dribble")
+                                                                                    .resizable()
+                                                                                    .aspectRatio(contentMode: .fit)
+                                                                                    .frame(width: 20, height: 20)
+                                                                            )
+                                                                    )
+                                                            }
+                                                            
+                                                            Spacer()
+                                                        }
+                                                        .padding(.leading, 7)
+                                                        .padding(.top, 16)
+                                                        
+                                                        Spacer()
+                                                    }
+                                                }
+                                            )
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -741,15 +1113,181 @@ struct MainAppView: View {
                     .background(Color(red: 0.95, green: 0.95, blue: 0.95))
                 }
                 } else if currentPage == 2 {
-                VStack {
-                    Text("Saved Page")
-                        .font(.custom("Inter", size: 24))
-                        .fontWeight(.bold)
-                        .padding()
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Title/Large
+                        Text("My Lists")
+                            .font(
+                                Font.custom("Inter", size: 32)
+                                    .weight(.bold)
+                            )
+                            .foregroundColor(.black)
+                            .padding(.top, 19)
+                            .padding(.leading, 21)
+                    }
                     
-                    Text("This is your saved items page!")
-                        .font(.custom("Inter", size: 16))
-                        .foregroundColor(.gray)
+                    Spacer()
+                    
+                    Button(action: {
+                        // Plus button action
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 18.6, weight: .medium))
+                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                            .frame(width: 18.6, height: 18.6)
+                    }
+                    .padding(.top, 19)
+                    .padding(.trailing, 17)
+                }
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                            .padding(.top, 16)
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Title/Small
+                            Text("My Favorite Spots <3")
+                                .font(
+                                    Font.custom("Inter", size: 18)
+                                        .weight(.medium)
+                                )
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 16)
+                            
+                            // Description/Small
+                            Text("269 places")
+                                .font(Font.custom("Inter", size: 12))
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 4)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.leading, 21)
+                    
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "bookmark.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                            .padding(.top, 16)
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Title/Small
+                            Text("Want to Go")
+                                .font(
+                                    Font.custom("Inter", size: 18)
+                                        .weight(.medium)
+                                )
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 16)
+                            
+                            // Description/Small
+                            Text("194 places")
+                                .font(Font.custom("Inter", size: 12))
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 4)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.leading, 21)
+                    
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                            .padding(.top, 16)
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Title/Small
+                            Text("Columbia Spots")
+                                .font(
+                                    Font.custom("Inter", size: 18)
+                                        .weight(.medium)
+                                )
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 16)
+                            
+                            // Description/Small
+                            Text("34 places")
+                                .font(Font.custom("Inter", size: 12))
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 4)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.leading, 21)
+                    
+                    // Lists you saved section
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Title/Medium
+                        Text("Lists you saved")
+                            .font(
+                                Font.custom("Inter", size: 24)
+                                    .weight(.semibold)
+                            )
+                            .foregroundColor(.black)
+                            .padding(.top, 24)
+                            .padding(.leading, 21)
+                        
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "cup.and.saucer.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 16)
+                            
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Title/Small
+                                Text("Best Cafes to Study")
+                                    .font(
+                                        Font.custom("Inter", size: 18)
+                                            .weight(.medium)
+                                    )
+                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                    .padding(.top, 16)
+                                
+                                // Description/Small
+                                Text("13 places")
+                                    .font(Font.custom("Inter", size: 12))
+                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                    .padding(.top, 4)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.leading, 21)
+                        
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                .padding(.top, 16)
+                            
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Title/Small
+                                Text("Top Family-friendly Spaces")
+                                    .font(
+                                        Font.custom("Inter", size: 18)
+                                            .weight(.medium)
+                                    )
+                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                    .padding(.top, 16)
+                                
+                                // Description/Small
+                                Text("53 places")
+                                    .font(Font.custom("Inter", size: 12))
+                                    .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                                    .padding(.top, 4)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.leading, 21)
+                    }
                     
                     Spacer()
                 }
@@ -759,7 +1297,14 @@ struct MainAppView: View {
             AppFooter(selectedTab: $currentPage) {
                 selectedCategory = nil
             }
+            }
+            .edgesIgnoringSafeArea(.bottom)
+            }
         }
-        .edgesIgnoringSafeArea(.bottom)
+        .onAppear {
+            if shuffledMarkers.isEmpty {
+                shuffledMarkers = sampleMarkers.shuffled()
+            }
+        }
     }
 }

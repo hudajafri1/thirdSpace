@@ -210,6 +210,8 @@ struct GoogleMapView: UIViewRepresentable {
     @Binding var mapView: GMSMapView?
     @Binding var coordinator: GoogleMapView.Coordinator?
     let markers: [MapMarker]
+    let onMarkerTap: ((MapMarker, CGPoint) -> Void)?
+    let onMapTap: ((CGPoint) -> Void)?
     
     func makeCoordinator() -> Coordinator {
         let coord = Coordinator(self)
@@ -396,6 +398,26 @@ struct GoogleMapView: UIViewRepresentable {
         }
         
         func mapViewDidFinishLoadingMap(_ mapView: GMSMapView) {
+        }
+        
+        func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
+            // Find the corresponding MapMarker
+            if let markerData = parent.markers.first(where: { markerData in
+                markerData.position.latitude == marker.position.latitude &&
+                markerData.position.longitude == marker.position.longitude &&
+                markerData.title == marker.title
+            }) {
+                // Convert marker coordinate to screen point
+                let point = mapView.projection.point(for: marker.position)
+                parent.onMarkerTap?(markerData, point)
+            }
+            return true
+        }
+        
+        func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
+            // Convert coordinate to screen point
+            let point = mapView.projection.point(for: coordinate)
+            parent.onMapTap?(point)
         }
     }
     

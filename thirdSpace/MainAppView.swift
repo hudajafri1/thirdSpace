@@ -19,8 +19,128 @@ struct RoundedCorner: Shape {
             cornerRadii: CGSize(width: radius, height: radius)
         )
         return Path(path.cgPath)
-    }
+    }   
 }
+
+
+struct PlaceDetailPopup: View {
+    let place: MapMarker
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        ZStack {
+            // Background overlay for list view
+            Color.black.opacity(0.4)
+                .ignoresSafeArea(.all)
+                .onTapGesture {
+                    isPresented = false
+                }
+            
+            // Full popup for list view
+                VStack(spacing: 0) {
+                // Image section
+                Rectangle()
+                    .foregroundColor(.clear)
+                    .frame(height: 300)
+                    .background(
+                        Image(
+                            place.id.hasPrefix("bookstore_") ? "bookstore" :
+                            place.id.hasPrefix("cafe_") ? "drinks" :
+                            place.id.hasPrefix("park_") ? "parkGarden" :
+                            place.id.hasPrefix("museum_") ? "musee" :
+                            place.id.hasPrefix("playground_") ? "plays" :
+                            place.id.hasPrefix("event_") ? "party" :
+                            "nypl"
+                        )
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 300)
+                        .clipped()
+                    )
+                    .cornerRadius(20, corners: [.topLeft, .topRight])
+                
+                // Content section
+                VStack(alignment: .leading, spacing: 0) {
+                    // Back button and close button
+                    HStack {
+                        Button(action: {
+                            isPresented = false
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16))
+                                Text("Back")
+                                    .font(Font.custom("Inter", size: 16))
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            isPresented = false
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 20))
+                                .foregroundColor(Color(red: 0.275, green: 0.29, blue: 0.302))
+                                .frame(width: 44, height: 44)
+                        }
+                    }
+                    .padding(.top, 8)
+                    .padding(.horizontal, 20)
+                    
+                    // Title/Medium - right below the image
+                    Text(place.title)
+                        .font(
+                            Font.custom("Inter", size: 24)
+                                .weight(.semibold)
+                        )
+                        .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                        .padding(.top, 16)
+                        .padding(.horizontal, 20)
+                    
+                    // Description/Medium - Rating
+                    Text("4.0 (253 Reviews)")
+                        .font(Font.custom("Inter", size: 14))
+                        .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                        .padding(.top, 8)
+                        .padding(.horizontal, 20)
+                    
+                    // Description/Medium - Hours
+                    Text("Opens Today 10 AM - 6 PM")
+                        .font(Font.custom("Inter", size: 14))
+                        .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                        .padding(.top, 4)
+                        .padding(.horizontal, 20)
+                    
+                    // Description/Medium - Address
+                    Text(place.snippet ?? "2900 Broadway, New York, NY \n10025 USA")
+                        .font(Font.custom("Inter", size: 14))
+                        .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                        .padding(.top, 4)
+                        .padding(.horizontal, 20)
+                    
+                    // Names/Medium - What you need to know
+                    Text("What you need to know...")
+                        .font(
+                            Font.custom("Inter", size: 18)
+                                .weight(.semibold)
+                        )
+                        .foregroundColor(Color(red: 0.16, green: 0.17, blue: 0.18))
+                        .padding(.top, 16)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                }
+                .background(Color.white)
+                .cornerRadius(20, corners: [.bottomLeft, .bottomRight])
+            }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.top, 76) // Position below the header
+            }
+        }
+    }
 
 struct MainAppView: View {
     @State private var mapView: GMSMapView?
@@ -32,6 +152,9 @@ struct MainAppView: View {
     @State private var savedItems: Set<String> = []
     @State private var shuffledMarkers: [MapMarker] = []
     @State private var showProfile: Bool = false
+    @State private var showPlacePopup: Bool = false
+    @State private var selectedPlace: MapMarker? = nil
+    @State private var tapLocation: CGPoint = .zero
     
     private var filteredMarkers: [MapMarker] {
         let markersToUse = shuffledMarkers.isEmpty ? sampleMarkers : shuffledMarkers
@@ -572,7 +695,8 @@ struct MainAppView: View {
             }
         } else {
             // Main App Content
-            VStack(spacing: 0) {
+            ZStack {
+                VStack(spacing: 0) {
                 HStack(alignment: .center) {
                     Rectangle()
                         .foregroundColor(.clear)
@@ -625,10 +749,11 @@ struct MainAppView: View {
                 .padding(.bottom, 8)
                 .frame(height: 76)
                 .background(Color.white)
+                .zIndex(1001) // Keep header above popup
                 
                 Divider()
             
-            if currentPage == 1 {
+            if currentPage == 1 && !showPlacePopup {
                 Button(action: {
                     if showPlacesDropdown {
                         selectedCategory = nil
@@ -658,7 +783,7 @@ struct MainAppView: View {
                 .padding(.bottom, 8)
             }
             
-            if showPlacesDropdown {
+            if showPlacesDropdown && !showPlacePopup {
                 VStack(alignment: .leading, spacing: 0) {
                     let placeTypes = ["bookstores", "cafes", "events", "libraries", "museums & galleries", "parks & gardens", "playgrounds"]
                     
@@ -877,11 +1002,55 @@ struct MainAppView: View {
                 .background(Color.white)
                 
                 if isMapView {
+                ZStack {
                     GoogleMapView(
                         mapView: $mapView,
                         coordinator: $coordinator,
-                        markers: filteredMarkers
+                        markers: filteredMarkers,
+                        onMarkerTap: { marker, point in
+                            // Update the selected place and tap location for the card
+                            selectedPlace = marker
+                            // Position the card at the marker's screen location
+                            tapLocation = point
+                        },
+                        onMapTap: { point in
+                            // Update tap location when map is tapped
+                            tapLocation = point
+                        }
                     )
+                    
+                    // Simple card overlay for map view
+                    if let place = selectedPlace {
+                        VStack {
+                            Spacer()
+                            
+                            HStack {
+                                Spacer()
+                                
+                                Text(place.title)
+                                    .font(
+                                        Font.custom("Inter", size: 16)
+                                            .weight(.medium)
+                                    )
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                    .onTapGesture {
+                                        selectedPlace = nil
+                                    }
+                                    .position(x: tapLocation.x, y: tapLocation.y)
+                                
+                                Spacer()
+                            }
+                            
+                            Spacer()
+                        }
+                    }
+                }
                     .id(selectedCategory)
                     .edgesIgnoringSafeArea([.leading, .trailing, .bottom])
                 } else {
@@ -889,7 +1058,11 @@ struct MainAppView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(filteredMarkers, id: \.id) { marker in
-                                ZStack {
+                                Button(action: {
+                                    selectedPlace = marker
+                                    showPlacePopup = true
+                                }) {
+                                    ZStack {
                                     Rectangle()
                                         .foregroundColor(.clear)
                                         .frame(width: 361, height: 200)
@@ -1105,6 +1278,7 @@ struct MainAppView: View {
                                             )
                                     }
                                 }
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -1299,6 +1473,13 @@ struct MainAppView: View {
             }
             }
             .edgesIgnoringSafeArea(.bottom)
+            }
+            
+            // Place detail popup overlay - only for list view
+            if showPlacePopup, let place = selectedPlace, !isMapView {
+                PlaceDetailPopup(place: place, isPresented: $showPlacePopup)
+                    .zIndex(1000) // Ensure it's on top of everything
+            }
             }
         }
         .onAppear {

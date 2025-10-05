@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D82A88482E91840D00ED78B7 /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = D82A88472E91840D00ED78B7 /* GoogleMaps */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D82A882A2E91713A00ED78B7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D82A88482E91840D00ED78B7 /* GoogleMaps in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = thirdSpace;
 			packageProductDependencies = (
+				D82A88472E91840D00ED78B7 /* GoogleMaps */,
 			);
 			productName = thirdSpace;
 			productReference = D82A88182E91713900ED78B7 /* thirdSpace.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = D82A880F2E91713900ED78B7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D82A88462E9183C700ED78B7 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D82A88192E91713900ED78B7 /* Products */;
 			projectDirPath = "";
@@ -583,6 +592,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D82A88462E9183C700ED78B7 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D82A88472E91840D00ED78B7 /* GoogleMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D82A88462E9183C700ED78B7 /* XCRemoteSwiftPackageReference "ios-maps-sdk" */;
+			productName = GoogleMaps;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D82A88102E91713900ED78B7 /* Project object */;
 }
